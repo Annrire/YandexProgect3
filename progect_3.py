@@ -3,6 +3,23 @@ from vk_api.keyboard import VkKeyboard, VkKeyboardColor
 from vk_api.bot_longpoll import VkBotLongPoll, VkBotEventType
 import random
 import os
+from peewee import *
+
+
+db = SqliteDatabase('results.db')
+
+
+class Person(Model):
+    name = CharField()
+    right = IntegerField()
+    wrong = IntegerField()
+    all = IntegerField()
+
+    class Meta:
+        database = db
+        
+        
+Person.create_table()
 
 
 def create_keyboard():
@@ -54,13 +71,29 @@ def create_keyboard_tasks_1():
     
     return keyboard.get_keyboard()
 
+def right_ans(fulname):
+    people = Person.select().where(Person.name == fulname).get()
+    people.right += 1
+    people.all += 1
+    people.save()    
+
+
+def wrong_ans(fulname):
+    people = Person.select().where(Person.name == fulname).get()
+    people.wrong += 1
+    people.all += 1
+    people.save()     
+
 
 TOKEN = 'e05458cb98d1c8479759d37bc4c6eeef66b4b3545eab2ef6f1b56d89bb3b1c639f528f469c96fafe6d3d2'
 def main():
+    create = True
     directory = 'C:/Users/hhh/Desktop/ответ' 
     files = os.listdir(directory)
     files = [i for i in files if i.endswith('.jpg')]
     task = False
+    ans = False
+    ans1 = False
     login, password = '89605241010', 'Lihannna8'
     vk_session = vk_api.VkApi(login, password)
     try:
@@ -81,6 +114,11 @@ def main():
             polz = event.obj.message['from_id']
             user = vk_session.method("users.get", {"user_ids": int(polz)})
             fullname = user[0]['first_name']
+            fulname = user[0]['first_name'] + user[0]['last_name']
+            if create:
+                people = Person(name=fulname, right=0, wrong=0, all=0)        
+                people.save()    
+                create = False
             keyboard = create_keyboard()
             if ('привет' in event.obj.message['text'].lower() or
                 'назад' in event.obj.message['text'].lower() or 
@@ -97,13 +135,44 @@ def main():
                              keyboard=keyboard1, 
                              random_id=random.randint(0, 2 ** 64))
                 task = True
+            if ans:
+                if ans1:
+                    if "424,8" == event.obj.message['text']:
+                        right_ans(fulname)
+                        keyboard1 = create_keyboard_tasks()
+                        vk.messages.send(user_id=event.obj.message['from_id'],
+                             message='Верно', 
+                             keyboard=keyboard1, 
+                             random_id=random.randint(0, 2 ** 64))
+                    else:
+                        wrong_ans(fulname)
+                        keyboard_1 = create_keyboard_tasks_1()
+                        vk.messages.send(user_id=event.obj.message['from_id'],
+                             message='Неверно', 
+                             keyboard=keyboard_1,  
+                             random_id=random.randint(0, 2 ** 64))
+                    ans1 = False
+                ans = False
+                task = True
             if task:
                 if "1" == event.obj.message['text']:
                     keyboard_1 = create_keyboard_tasks_1()
                     vk.messages.send(user_id=event.obj.message['from_id'],
                              message=files[0], 
-                             keyboard=keyboard1, 
+                             keyboard=keyboard_1, 
                              random_id=random.randint(0, 2 ** 64))
+                    ans = True
+                    ans1 = True
+                    task = False
+                if "2" == event.obj.message['text']:
+                    keyboard_1 = create_keyboard_tasks_1()
+                    vk.messages.send(user_id=event.obj.message['from_id'],
+                             message=files[0], 
+                             keyboard=keyboard_1, 
+                             random_id=random.randint(0, 2 ** 64))
+                    ans = True
+                    ans1 = True
+                    task = False
             
 
 
