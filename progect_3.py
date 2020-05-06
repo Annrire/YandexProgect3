@@ -3,6 +3,8 @@ from vk_api.keyboard import VkKeyboard, VkKeyboardColor
 from vk_api.bot_longpoll import VkBotLongPoll, VkBotEventType
 import random
 import os
+import sys
+import requests
 from peewee import *
 from flask import Flask, url_for
 
@@ -38,6 +40,14 @@ def create_keyboard():
     keyboard.add_button("Сообщить об ошибке и/или оставить отзыв", color=vk_api.keyboard.VkKeyboardColor.PRIMARY)
 
     return keyboard.get_keyboard()
+
+
+def create_keyboard_game():
+    keyboard = vk_api.keyboard.VkKeyboard(one_time=True)
+    keyboard.add_button("Старт", color=vk_api.keyboard.VkKeyboardColor.POSITIVE)
+
+    keyboard.add_line()
+    keyboard.add_button("Назад", color=vk_api.keyboard.VkKeyboardColor.PRIMARY)
 
 
 def create_keyboard_tasks():
@@ -286,7 +296,13 @@ def main():
                              random_id=random.randint(0, 2 ** 64))
                 task = False
                 quest = False
-            elif "Перейти к задачам" in event.obj.message['text']:
+            elif "Сообщить об ошибке и/или оставить отзыв" == vent.obj.message['text']:
+                vk.messages.send(user_id=event.obj.message['from_id'],
+                             message=f"Ждем ваших отзывов или предложений ☺", 
+                             keyboard=keyboard, 
+                             random_id=random.randint(0, 2 ** 64))
+                otziv = True
+            elif "Перейти к задачам" == event.obj.message['text']:
                 keyboard1 = create_keyboard_tasks()
                 vk.messages.send(user_id=event.obj.message['from_id'],
                              message=f"{fullname}, выбери задание", 
@@ -294,10 +310,15 @@ def main():
                              random_id=random.randint(0, 2 ** 64))
                 task = True
                 quest = True
-            elif "Результат" in event.obj.message['text']:
+            elif "Результат" == event.obj.message['text']:
+                vk.messages.send(user_id=event.obj.message['from_id'],
+                             message="http://127.0.0.1:8080/results", 
+                             keyboard=keyboard, 
+                             random_id=random.randint(0, 2 ** 64))                
                 @app.route('/')  
                 @app.route('/results')
                 def bootstrap():
+                    people = Person.select().where(Person.name == fulname).get()
                     return f"""<!doctype html>
                                     <html lang="en">
                                       <head>
@@ -328,11 +349,19 @@ def main():
                 if __name__ == "__main__":
                     from waitress import serve
                     serve(app, host="127.0.0.1", port=8080)
-                    
+            elif "Мини-игра" == event.obj.message['text']:
+                keyboard_game = create_keyboard_game()
                 vk.messages.send(user_id=event.obj.message['from_id'],
-                             message="http://127.0.0.1:8080/results", 
+                             message=f"""Привет, я предлагаю сыграть тебе в простую игру. Переходи по ссылке и угадывай
+                             достопримечательности. Только пиши названия полностью. Готовы?""", 
                              keyboard=keyboard, 
-                             random_id=random.randint(0, 2 ** 64))
+                       random_id=random.randint(0, 2 ** 64))
+            if otziv:
+                vk.messages.send(user_id=event.obj.message['from_id'],
+                             message=f"Администратор вскоре рассмотрит ваше сообщение ☺", 
+                             keyboard=keyboard, 
+                       random_id=random.randint(0, 2 ** 64))
+                otziv = False
                 
             if ans:
                 if ans1:
