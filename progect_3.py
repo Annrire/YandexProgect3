@@ -6,11 +6,9 @@ import os
 import sys
 import requests
 from peewee import *
-from flask import Flask, url_for
 
 
 db = SqliteDatabase('results.db')
-app = Flask(__name__)
 
 
 class Person(Model):
@@ -33,7 +31,6 @@ def create_keyboard():
     keyboard.add_button("Перейти к задачам", color=vk_api.keyboard.VkKeyboardColor.POSITIVE)
 
     keyboard.add_line()
-    keyboard.add_button("Мини-игра", color=vk_api.keyboard.VkKeyboardColor.PRIMARY)
     keyboard.add_button("Результат", color=vk_api.keyboard.VkKeyboardColor.PRIMARY)
     
     keyboard.add_line()
@@ -48,6 +45,8 @@ def create_keyboard_game():
 
     keyboard.add_line()
     keyboard.add_button("Назад", color=vk_api.keyboard.VkKeyboardColor.PRIMARY)
+    
+    return keyboard.get_keyboard()
 
 
 def create_keyboard_tasks():
@@ -217,6 +216,14 @@ def create_keyboard_tasks_12():
     return keyboard.get_keyboard()
 
 
+def create_keyboard_tasks_ans():
+    keyboard = vk_api.keyboard.VkKeyboard(one_time=True)
+    keyboard.add_button("Далее", color=vk_api.keyboard.VkKeyboardColor.PRIMARY)  
+    
+    keyboard.add_line()
+    keyboard.add_button("Назад", color=vk_api.keyboard.VkKeyboardColor.PRIMARY)    
+
+
 def right_ans(fulname):
     people = Person.select().where(Person.name == fulname).get()
     people.right += 1
@@ -237,6 +244,7 @@ def main():
     create = True
     task = False
     ans = False
+    game = False
     ans1 = False
     ans2 = False
     ans3 = False
@@ -249,7 +257,11 @@ def main():
     ans10 = False
     ans11 = False
     ans12 = False
+    otziv = False
     quest = False
+    photoo = []
+    num = -1
+    ans_game = False
     login, password = '89605241010', 'Lihannna8'
     vk_session = vk_api.VkApi(login, password)
     try:
@@ -260,9 +272,9 @@ def main():
     vk = vk_session.get_api()    
     owner_id = -194171750
     album_id = '271712137'
-    directory = 'C:/Users/hhh/Desktop/ответ' 
+    directory = 'C:/Users/hhh/Desktop/prog_3/ответ' #путь до папки с задачами
     files = os.listdir(directory)
-    files = [i for i in files]
+    files = [i for i in files if i.endswith('.jpg') or i.endswith('.jpeg')]
     upload = vk_api.VkUpload(vk_session)
     for i in files:
         photo = upload.photo(f'{directory}/{i}', album_id=album_id, group_id='194171750')
@@ -296,10 +308,9 @@ def main():
                              random_id=random.randint(0, 2 ** 64))
                 task = False
                 quest = False
-            elif "Сообщить об ошибке и/или оставить отзыв" == vent.obj.message['text']:
+            elif "Сообщить об ошибке и/или оставить отзыв" == event.obj.message['text']:
                 vk.messages.send(user_id=event.obj.message['from_id'],
                              message=f"Ждем ваших отзывов или предложений ☺", 
-                             keyboard=keyboard, 
                              random_id=random.randint(0, 2 ** 64))
                 otziv = True
             elif "Перейти к задачам" == event.obj.message['text']:
@@ -311,57 +322,23 @@ def main():
                 task = True
                 quest = True
             elif "Результат" == event.obj.message['text']:
+                people = Person.select().where(Person.name == fulname).get()  
                 vk.messages.send(user_id=event.obj.message['from_id'],
-                             message="http://127.0.0.1:8080/results", 
+                             message=f"""Имя - {people.name}
+                             Правильных - {people.right}
+                             Неверных - {people.wrong} 
+                             Всего - {people.all}""", 
                              keyboard=keyboard, 
-                             random_id=random.randint(0, 2 ** 64))                
-                @app.route('/')  
-                @app.route('/results')
-                def bootstrap():
-                    people = Person.select().where(Person.name == fulname).get()
-                    return f"""<!doctype html>
-                                    <html lang="en">
-                                      <head>
-                                        <meta charset="utf-8">
-                                        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-                                        <link rel="stylesheet" 
-                                        href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css" 
-                                        integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" 
-                                        crossorigin="anonymous">
-                                        <link rel="stylesheet" type="text/css" href="{url_for('static', filename='css/style.css')}" />
-                                        <title>Статистика</title>
-                                      </head>
-                                      <body>
-                                        <h1>Статистика {fulname}</h1>
-                                        <div class="alert alert-dark" role="alert">
-                                          Всего - {people.all}
-                                        </div>
-                                        <div class="alert alert-success" role="alert">
-                                          Количество верных - {people.right}
-                                        </div>
-                                        <div class="alert alert-danger" role="alert">
-                                          Количество неверных - {people.wrong}
-                                        </div>
-                                      </body>
-                                    </html>"""
-
-
-                if __name__ == "__main__":
-                    from waitress import serve
-                    serve(app, host="127.0.0.1", port=8080)
-            elif "Мини-игра" == event.obj.message['text']:
-                keyboard_game = create_keyboard_game()
-                vk.messages.send(user_id=event.obj.message['from_id'],
-                             message=f"""Привет, я предлагаю сыграть тебе в простую игру. Переходи по ссылке и угадывай
-                             достопримечательности. Только пиши названия полностью. Готовы?""", 
-                             keyboard=keyboard, 
-                       random_id=random.randint(0, 2 ** 64))
-            if otziv:
+                             random_id=random.randint(0, 2 ** 64))       
+                
+            
+            
+            elif not ans_game and not task and not ans:
                 vk.messages.send(user_id=event.obj.message['from_id'],
                              message=f"Администратор вскоре рассмотрит ваше сообщение ☺", 
                              keyboard=keyboard, 
                        random_id=random.randint(0, 2 ** 64))
-                otziv = False
+            
                 
             if ans:
                 if ans1:
@@ -721,7 +698,9 @@ def main():
                     ans12 = True
                     task = False
             
+    
 
-
-if __name__ == '__main__':
+if __name__ == '__main__':  
     main()
+    from waitress import serve
+    serve(app, host="127.0.0.1", port=8080)         
