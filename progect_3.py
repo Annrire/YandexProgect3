@@ -26,8 +26,6 @@ Person.create_table()
 
 def create_keyboard():
     keyboard = vk_api.keyboard.VkKeyboard(one_time=True)
-    #False Если клавиатура должна оставаться откртой после нажатия на кнопку
-    #True если она должна закрваться
     keyboard.add_button("Перейти к задачам", color=vk_api.keyboard.VkKeyboardColor.POSITIVE)
 
     keyboard.add_line()
@@ -238,7 +236,7 @@ def wrong_ans(fulname):
     people.save()     
 
 
-TOKEN = 'e05458cb98d1c8479759d37bc4c6eeef66b4b3545eab2ef6f1b56d89bb3b1c639f528f469c96fafe6d3d2'
+TOKEN = TOKEN #токен сообщества
 def main():
     photoss = []
     create = True
@@ -262,7 +260,7 @@ def main():
     photoo = []
     num = -1
     ans_game = False
-    login, password = '89605241010', 'Lihannna8'
+    login, password = login, password # логин и пароль пользователя
     vk_session = vk_api.VkApi(login, password)
     try:
         vk_session.auth(token_only=True)
@@ -270,21 +268,21 @@ def main():
         print(error_msg)
         return
     vk = vk_session.get_api()    
-    owner_id = -194171750
-    album_id = '271712137'
-    directory = 'C:/Users/hhh/Desktop/prog_3/ответ' #путь до папки с задачами
+    owner_id = owner_id #айди группы с - вначале в виде числа
+    album_id = album_id #айди альбома в виде строки
+    directory = directory #путь до папки с задачами
     files = os.listdir(directory)
     files = [i for i in files if i.endswith('.jpg') or i.endswith('.jpeg')]
     upload = vk_api.VkUpload(vk_session)
     for i in files:
-        photo = upload.photo(f'{directory}/{i}', album_id=album_id, group_id='194171750')
+        photo = upload.photo(f'{directory}/{i}', album_id=album_id, group_id=group_id) #айди группы в виде строки
         photos_count = vk.photos.get(owner_id=owner_id, album_id=album_id)
     for i in photos_count['items']:
         photoss.append(f"photo{owner_id}_{i['id']}")      
     vk_session = vk_api.VkApi(
         token=TOKEN)
 
-    longpoll = VkBotLongPoll(vk_session, 194171750)
+    longpoll = VkBotLongPoll(vk_session, group_id) #айди группы в виде числа
 
     for event in longpoll.listen():
 
